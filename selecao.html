@@ -1,0 +1,538 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviator - Selecione a Plataforma</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        (function checkLoginStatus() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            if (isLoggedIn !== 'true') {
+                window.location.replace('/');
+            }
+        })();
+    </script>
+
+    <style>
+        :root {
+            --color-text-neon: #e0f7ff;
+            --color-primary-dark: #000000; /* Alterado para preto puro */
+            --color-neon-glow: #00d4ff;
+            --color-apostamax-neon: #ff3d00;
+            --color-goathbet-neon: #00ff6b;
+            --color-aposta1-neon: #b300ff;
+            --color-apostaganha-neon: #00b7eb;
+            --color-button-analyze: linear-gradient(135deg, #1c2526, #2a2e45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Orbitron', Arial, sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+            background: var(--color-primary-dark); /* Fundo do body agora é preto */
+            position: relative;
+        }
+
+        canvas#particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background-color: #000000; /* Fundo do canvas também preto */
+        }
+
+        .content-wrapper {
+            width: 90%;
+            max-width: 400px;
+            margin: 0 auto; /* Center horizontally */
+            text-align: center;
+            color: var(--color-text-neon);
+            padding-top: 80px;
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Ensure content is centered */
+        }
+
+        header {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .main-logo {
+            content: url('https://i.postimg.cc/NM74dnZZ/1760018459052.png');
+            max-width: 80%;
+            height: auto;
+            margin: 0 auto 15px; /* Center logo */
+            display: block;
+            filter: drop-shadow(0 0 10px var(--color-neon-glow));
+            animation: glow-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% { filter: drop-shadow(0 0 10px var(--color-neon-glow)); }
+            50% { filter: drop-shadow(0 0 20px var(--color-neon-glow)); }
+        }
+
+        h1 {
+            font-size: 1.5em;
+            font-weight: 700;
+            text-shadow: 0 0 10px var(--color-neon-glow);
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+        }
+
+        .platform-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            width: 100%; /* Ensure cards take full width of container */
+            max-width: 400px; /* Match content-wrapper max-width */
+        }
+
+        .platform-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .platform-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .platform-card:hover::before {
+            opacity: 1;
+        }
+
+        .platform-card.platform-apostamax {
+            border-color: var(--color-apostamax-neon);
+        }
+
+        .platform-card.platform-goathbet {
+            border-color: var(--color-goathbet-neon);
+        }
+
+        .platform-card.platform-aposta1 {
+            border-color: var(--color-aposta1-neon);
+        }
+
+        .platform-card.platform-apostaganha {
+            border-color: var(--color-apostaganha-neon);
+        }
+
+        .platform-logo {
+            max-width: 55%;
+            height: auto;
+            margin: 0 auto 15px; /* Center logo */
+            display: block;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 0 5px rgba(0, 212, 255, 0.5));
+        }
+
+        .platform-card:hover .platform-logo {
+            transform: scale(1.1);
+        }
+
+        .platform-card.platform-goathbet .platform-logo {
+            max-width: 35%;
+        }
+
+        .buttons-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .button {
+            flex: 1;
+            padding: 12px;
+            text-decoration: none;
+            color: var(--color-text-neon);
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .analyze-button {
+            background: var(--color-button-analyze);
+            border: none;
+        }
+
+        .analyze-button:hover {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        .platform-apostamax .dashboard-button {
+            background: linear-gradient(135deg, var(--color-apostamax-neon), #d32f2f);
+            box-shadow: 0 0 10px var(--color-apostamax-neon);
+        }
+
+        .platform-apostamax .dashboard-button:hover {
+            background: linear-gradient(135deg, #ff7043, #ff3d00);
+        }
+
+        .platform-goathbet .dashboard-button {
+            background: linear-gradient(135deg, var(--color-goathbet-neon), #00c853);
+            box-shadow: 0 0 10px var(--color-goathbet-neon);
+        }
+
+        .platform-goathbet .dashboard-button:hover {
+            background: linear-gradient(135deg, #69f0ae, #00ff6b);
+        }
+
+        .platform-aposta1 .dashboard-button {
+            background: linear-gradient(135deg, var(--color-aposta1-neon), #7b1fa2);
+            box-shadow: 0 0 10px var(--color-aposta1-neon);
+        }
+
+        .platform-aposta1 .dashboard-button:hover {
+            background: linear-gradient(135deg, #e040fb, #b300ff);
+        }
+
+        .platform-apostaganha .dashboard-button {
+            background: linear-gradient(135deg, var(--color-apostaganha-neon), #0288d1);
+            box-shadow: 0 0 10px var(--color-apostaganha-neon);
+        }
+
+        .platform-apostaganha .dashboard-button:hover {
+            background: linear-gradient(135deg, #4fc3f7, #00b7eb);
+        }
+
+        .splash {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.5);
+            transform: scale(0);
+            animation: splash-effect 0.5s ease-out;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes splash-effect {
+            to {
+                transform: scale(3.5);
+                opacity: 0;
+            }
+        }
+
+        .logout-button {
+            margin-top: 30px;
+            padding: 12px;
+            background: linear-gradient(135deg, #0288d1, #01579b);
+            color: var(--color-text-neon);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            width: 100%;
+            max-width: 400px; /* Match platform card width */
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .logout-button:hover {
+            background: linear-gradient(135deg, #03a9f4, #0288d1);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.7);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @media (min-width: 768px) {
+            .content-wrapper {
+                max-width: 700px;
+                background: rgba(255, 255, 255, 0.03);
+                padding: 50px;
+                border-radius: 16px;
+                box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+                margin: 0 auto; /* Ensure centering on larger screens */
+            }
+
+            .main-logo {
+                max-width: 60%;
+                margin: 0 auto 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+                margin-bottom: 40px;
+            }
+
+            .platform-card {
+                padding: 30px;
+                margin-bottom: 25px;
+                max-width: 600px; /* Slightly wider for desktop */
+            }
+
+            .platform-logo {
+                max-width: 50%;
+            }
+
+            .platform-card.platform-goathbet .platform-logo {
+                max-width: 30%;
+            }
+
+            .button {
+                padding: 14px;
+                font-size: 1em;
+            }
+
+            .logout-button {
+                padding: 14px;
+                font-size: 1em;
+                max-width: 600px; /* Match platform card width */
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particle-bg"></canvas>
+    <div class="content-wrapper">
+        <header>
+            <img src="https://i.postimg.cc/NM74dnZZ/1760018459052.png" alt="Novo Aviator Logo" class="main-logo">
+            <h1>SELECIONE A PLATAFORMA:</h1>
+        </header>
+
+        <div class="platform-card platform-apostamax">
+            <img src="https://i.postimg.cc/QxFg3DbV/logoplata.png" alt="Logo Apostamax" class="platform-logo">
+            <div class="buttons-container">
+                <a href="apostamax.html" class="button analyze-button">ANALISAR</a>
+                <a href="dashmax.html" class="button dashboard-button">DASHBOARD</a>
+                <a href="bot2xmax.html" class="button analyze-button">BOT2X</a>
+            </div>
+        </div>
+
+        <div class="platform-card platform-goathbet">
+            <img src="https://i.postimg.cc/q7nqXJTq/logo-GOATH.png" alt="Logo GOATHBET" class="platform-logo">
+            <div class="buttons-container">
+                <a href="GOATHBET.html" class="button analyze-button">ANALISAR</a>
+                <a href="dashgoath.html" class="button dashboard-button">DASHBOARD</a>
+                <a href="bot2xgoath.html" class="button analyze-button">BOT2X</a>
+            </div>
+        </div>
+
+        <div class="platform-card platform-aposta1">
+            <img src="https://i.postimg.cc/PqLL6ppC/Picsart-25-10-10-18-10-57-208.png" alt="Logo Aposta1" class="platform-logo">
+            <div class="buttons-container">
+                <a href="aposta1.html" class="button analyze-button">ANALISAR</a>
+                <a href="dashaposta1.html" class="button dashboard-button">DASHBOARD</a>
+                <a href="bot2xaposta1.html" class="button analyze-button">BOT2X</a>
+            </div>
+        </div>
+
+        <div class="platform-card platform-apostaganha">
+            <img src="https://i.postimg.cc/Yq0h2DMr/IMG-20251010-205859.png" alt="Logo Apostaganha" class="platform-logo">
+            <div class="buttons-container">
+                <a href="apostaganha.html" class="button analyze-button">ANALISAR</a>
+                <a href="dashganha.html" class="button dashboard-button">DASHBOARD</a>
+                <a href="bot2xapostaganha.html" class="button analyze-button">BOT2X</a>
+            </div>
+        </div>
+
+        <button id="logout-button" class="logout-button">SAIR (LOGOUT)</button>
+    </div>
+
+    <script>
+        // Particle Background Animation
+        const canvas = document.getElementById('particle-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particlesArray = [];
+        const numberOfParticles = 100;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 5 + 1;
+                this.speedX = Math.random() * 3 - 1.5;
+                this.speedY = Math.random() * 3 - 1.5;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.size > 0.2) this.size -= 0.1;
+
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = 'rgba(0, 212, 255, 0.8)'; // Cor dos círculos das partículas
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            for (let i = 0; i < numberOfParticles; i++) {
+                particlesArray.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Desenha um fundo preto para o canvas a cada frame
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+                particlesArray[i].draw();
+
+                for (let j = i; j < particlesArray.length; j++) {
+                    const dx = particlesArray[i].x - particlesArray[j].x;
+                    const dy = particlesArray[i].y - particlesArray[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 100) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(0, 212, 255, ${1 - distance / 100})`; // Cor das linhas das partículas
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                        ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
+                        ctx.stroke();
+                    }
+                }
+
+                if (particlesArray[i].size <= 0.2) {
+                    particlesArray.splice(i, 1);
+                    i--;
+                    particlesArray.push(new Particle());
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        init();
+        animate();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Button and Logout Functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const buttons = document.querySelectorAll('.button');
+            
+            buttons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const targetURL = button.getAttribute('href');
+                    
+                    const existingSplash = button.querySelector('.splash');
+                    if (existingSplash) {
+                        existingSplash.remove();
+                    }
+
+                    const splash = document.createElement('span');
+                    splash.classList.add('splash');
+                    
+                    const rect = button.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    const size = Math.max(rect.width, rect.height);
+                    splash.style.width = splash.style.height = `${size}px`;
+                    splash.style.left = `${x - size / 2}px`;
+                    splash.style.top = `${y - size / 2}px`;
+
+                    button.appendChild(splash);
+
+                    e.preventDefault();
+                    
+                    setTimeout(() => {
+                        window.location.href = targetURL;
+                    }, 500);
+                });
+            });
+
+            document.getElementById('logout-button').addEventListener('click', () => {
+                localStorage.removeItem('isLoggedIn');
+                window.location.replace('/');
+            });
+        });
+    </script>
+</body>
+</html>

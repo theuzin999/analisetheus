@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url('https://i.postimg.cc/BtWFJVC9/Gold-and-Black-Login-Mockup-Your-Story-20251009-090917-0000.png');
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+            color: #ffffff;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .falling {
+            position: absolute;
+            width: 3px;
+            height: 20px;
+            background-color: rgba(0, 191, 255, 0.7);
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(-20px);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        .login-container {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 50px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            width: 350px;
+            max-width: 90%;
+            border: 1px solid rgba(70, 70, 70, 0.5);
+        }
+
+        .login-container h2 {
+            margin-bottom: 30px;
+            color: #e0e0e0;
+            font-size: 2.2em;
+            letter-spacing: 1px;
+        }
+
+        .input-field {
+            margin: 20px 0;
+            width: calc(100% - 20px);
+            padding: 15px;
+            border: none;
+            border-bottom: 2px solid #00bfff;
+            border-radius: 4px 4px 0 0;
+            background: #222;
+            color: #ffffff;
+            font-size: 1.1em;
+            outline: none;
+            transition: border-bottom 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-bottom: 2px solid #007bff;
+        }
+
+        .login-button {
+            margin-top: 30px;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: background 0.3s ease, transform 0.2s ease;
+            width: 100%;
+        }
+
+        .login-button:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .logo {
+            margin-top: 40px;
+            width: 200px;
+            height: auto;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+        }
+
+        .logo:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background">
+        <script>
+            // Criar mais gotas de chuva para cobrir toda a tela
+            const numDrops = 100;
+            for (let i = 0; i < numDrops; i++) {
+                let div = document.createElement('div');
+                div.classList.add('falling');
+                div.style.left = Math.random() * 100 + 'vw';
+                div.style.animationDuration = Math.random() * 2 + 3 + 's';
+                div.style.animationDelay = Math.random() * 5 + 's';
+                document.querySelector('.background').appendChild(div);
+            }
+        </script>
+    </div>
+
+    <div class="login-container">
+        <h2>LOGIN</h2>
+        <input type="text" placeholder="Enter your Key" class="input-field">
+        <button class="login-button">LOGIN</button>
+        <img src="https://i.postimg.cc/dVNy1361/20251006-152207.png" alt="Logo Aviator Theus" class="logo">
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+      import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDdFfJmc2cTgOkoTC8y81oeOgwO5FJCbpQ",
+        authDomain: "keys-326ca.firebaseapp.com",
+        projectId: "keys-326ca",
+        storageBucket: "keys-326ca.firebasestorage.app",
+        messagingSenderId: "477295200735",
+        appId: "1:477295200735:web:281f79d733cee24dc31c6a",
+        measurementId: "G-P06BW11RVS"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const input = document.querySelector('.input-field');
+      const btn = document.querySelector('.login-button');
+
+      // CORRIGIDO: Adiciona 'event' e 'event.preventDefault()' e salva a flag 'isLoggedIn'
+      btn.addEventListener('click', async (event) => {
+        event.preventDefault(); // <-- IMPEDE O RECARREGAMENTO DA PÁGINA
+
+        const entered = input.value.trim();
+        if (!entered) return alert('Digite a key');
+
+        try {
+          // 1. Crie a referência para a COLEÇÃO 'keys'
+          const keysCollectionRef = collection(db, 'keys'); 
+          
+          // 2. Crie a QUERY (consulta):
+          const q = query(keysCollectionRef, where('valor', '==', entered));
+          
+          // 3. Execute a consulta e obtenha os documentos
+          const snapshot = await getDocs(q);
+
+          if (!snapshot.empty) {
+            // SUCESSO: Salva a flag para liberar o acesso na próxima página
+            localStorage.setItem('isLoggedIn', 'true'); 
+            
+            // Redireciona para a página protegida
+            window.location.href = 'selecao.html';
+          } else {
+            // Nenhuma key correspondente encontrada
+            alert('Key inválida.');
+          }
+        } catch (err) {
+          console.error("Erro no Firebase ou na conexão:", err);
+          alert('Erro ao verificar a key.');
+        }
+      });
+    </script>
+
+</body>
+</html>
