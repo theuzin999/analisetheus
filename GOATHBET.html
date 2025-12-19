@@ -114,6 +114,41 @@
     .logo-main h1 {
       display: none;
     }
+    
+    /* NOVOS ESTILOS PARA OS BOTÕES DE SERVIDOR */
+    .server-selector {
+        display: flex;
+        gap: 10px;
+    }
+    .btn-server {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        padding: 10px 20px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-server i {
+        font-size: 0.8rem;
+    }
+    .btn-server:hover {
+        background: rgba(255,255,255,0.1);
+        color: var(--text);
+    }
+    .btn-server.active {
+        background: linear-gradient(135deg, var(--purple), #7b3bff);
+        color: white;
+        border-color: rgba(255,255,255,0.2);
+        box-shadow: 0 4px 12px rgba(123, 59, 255, 0.4);
+    }
+    /* FIM DOS NOVOS ESTILOS */
+
     #alerts {
       padding: 10px 16px;
       border-radius: 10px;
@@ -387,6 +422,9 @@
       .avg-grid { grid-template-columns: repeat(1, 1fr); }
       .side { order: 1; }
       .main-content { order: 0; }
+      /* Ajuste dos botões no mobile */
+      .server-selector { width: 100%; justify-content: center; }
+      .btn-server { flex: 1; justify-content: center; }
     }
   </style>
 </head>
@@ -399,6 +437,16 @@
         <img src="https://i.postimg.cc/VSNCSnpY/aviator-logo.png" alt="Aviator Logo" />
         <h1>AUXÍLIO ANÁLISE</h1>
     </div>
+
+    <div class="server-selector">
+        <button id="btnAviator1" class="btn-server active" onclick="switchAviator(1)">
+            <i class="fas fa-gamepad"></i> Aviator 1
+        </button>
+        <button id="btnAviator2" class="btn-server" onclick="switchAviator(2)">
+            <i class="fas fa-rocket"></i> Aviator 2
+        </button>
+    </div>
+
     <div id="alerts">Status: Conectando...</div>
   </header>
 
@@ -624,7 +672,8 @@
             historyData = [];
             values = [];
             updatePrediction();
-            alerts.innerText = '⚠️ Conectado ao Firebase, mas o histórico está vazio.';
+            // Apenas avisa se não houver dados, mas mantém conectado
+            alerts.innerText = '⚠️ Conectado, mas histórico vazio.';
             alerts.classList.add('status-error');
             return;
         }
@@ -645,7 +694,7 @@
         updateRosePatterns(values);
         updatePrediction(); 
         
-        alerts.innerText = '✅ Conectado ao Firebase. Dados sincronizados.';
+        // Remove erro se tinha
         alerts.classList.remove('status-error');
     }
 
@@ -680,18 +729,60 @@
       measurementId: "G-9MVGBX2KLX"
     };
     
+    let currentDbRef = null;
+
+    // FUNÇÃO PARA TROCAR O CAMINHO DO FIREBASE
+    function switchAviator(version) {
+        const btn1 = document.getElementById('btnAviator1');
+        const btn2 = document.getElementById('btnAviator2');
+        const alertBox = document.getElementById('alerts');
+
+        // Atualiza UI dos botões
+        if (version === 1) {
+            btn1.classList.add('active');
+            btn2.classList.remove('active');
+        } else {
+            btn1.classList.remove('active');
+            btn2.classList.add('active');
+        }
+
+        alertBox.innerText = `Alternando para Aviator ${version}...`;
+        alertBox.classList.remove('status-error');
+
+        // Desliga o listener anterior se existir
+        if (currentDbRef) {
+            currentDbRef.off();
+        }
+        
+        // Limpa visualmente para indicar troca
+        historyGrid.innerHTML = '<div class="chip" style="min-width: 100%;">Carregando dados...</div>';
+        
+        // Define novo caminho
+        const path = version === 1 ? "history/" : "aviator2/";
+        
+        try {
+            currentDbRef = firebase.database().ref(path);
+
+            currentDbRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                processAndRenderHistory(data);
+                alertBox.innerText = `✅ Aviator ${version} Conectado.`;
+                alertBox.classList.remove('status-error');
+            }, (error) => {
+                alertBox.innerText = `❌ Erro Aviator ${version}: ${error.message}`;
+                alertBox.classList.add('status-error');
+                console.error(error);
+            });
+        } catch (e) {
+            alertBox.innerText = `❌ Erro ao conectar Aviator ${version}.`;
+            console.error(e);
+        }
+    }
+
     try {
         const app = firebase.initializeApp(firebaseConfig);
-        const dbRef = app.database().ref("history/"); 
-
-        dbRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            processAndRenderHistory(data);
-        }, (error) => {
-            alerts.innerText = `❌ Erro de conexão com Firebase: ${error.message}`;
-            alerts.classList.add('status-error');
-            console.error(error);
-        });
+        // Inicia carregando o Aviator 1 por padrão
+        switchAviator(1);
         
     } catch (e) {
         alerts.innerText = '❌ ERRO: Falha ao inicializar o Firebase. Verifique o console para detalhes.';
